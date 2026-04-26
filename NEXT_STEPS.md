@@ -1,121 +1,71 @@
-# Nächste Schritte (re-priorisiert nach Nutzerfeedback)
+# Nächste Schritte (Roadmap nach MVP)
 
-## Zielbild nach Feedback
+## 1) Fachliche Präzisierung
 
-Fokus ist **nicht** mehr auf neue UI-Features, sondern auf:
-1. **verlässliche Standortermittlung**,
-2. **automatisches Hinzufügen von Tankstellen** (statt rein manuell),
-3. **realistische Distanz/Fahrtkosten über Routing-Dienste**,
-4. **klarere Logik für Referenz-Vergleich** (oder Entfernung dieses Konzepts).
+1. **Referenzmodell festlegen**
+   - Standard: „nächste Tankstelle“ vs. „vom Nutzer gewählte Referenz“.
+   - Klar definieren, ob Distanz **einfach** oder **Hin- und Rückweg** ist.
+2. **Energieträger-spezifische Logik**
+   - Benzin/Diesel in `€/L`, Strom in `€/kWh`.
+   - Nur passende Tankstellen/Ladesäulen pro Fahrzeugtyp anzeigen.
+3. **Grenznahe Preislogik (CZ)**
+   - Währungsumrechnung (`CZK -> EUR`) mit Zeitstempel.
+   - Optional: Grenz-/Maut-/Vignettenkosten berücksichtigen.
 
----
+## 2) Datenmodell verbessern
 
-## Sprint 1 – Stabilisierung der Kernlogik (1 Woche)
+1. **Tankstellenpreise normalisieren**
+   - Eine Tankstelle hat mehrere Preisfelder (z. B. `e5`, `diesel`, `strom_ac`, `strom_dc`) statt nur einem Preis.
+2. **Geodaten statt manuelle Distanz**
+   - `lat/lng` für Standort und Stationen speichern.
+   - Distanz/Fahrzeit über Routing-API berechnen.
+3. **Versions-/Zeitbezug für Preise**
+   - Jeder Preis mit `updatedAt`.
+   - Alte Preise als „veraltet“ markieren.
 
-### Scope
-- Standortabfrage im Browser sauber integrieren (`navigator.geolocation`)
-- Explizite Zustände im UI:
-  - Standort erlaubt
-  - Standort verweigert
-  - Standort nicht verfügbar
-- Rechenpfad absichern:
-  - ohne Standort => klarer Fallback (keine „Pseudo-Genauigkeit“)
-  - mit Standort => Distanz aus Standort + Stationsdaten
-- Referenzlogik klären:
-  - Option A: Referenz entfernen, nur „bestes Ziel“ + Begründung
-  - Option B: Referenz bleibt, aber wird fachlich strikt definiert (z. B. „nächste Station“)
+## 3) UX und Produktreife
 
-### Deliverables
-- Technische Spezifikation „Standort & Distanz“
-- Akzeptanzkriterien für Berechnung mit/ohne Standort
-- Überarbeitete Ergebnisdarstellung mit nachvollziehbarer Begründung
+1. **CRUD komplett machen**
+   - Bearbeiten/Löschen für Fahrzeuge und Tankstellen.
+2. **Validierungen & Guardrails**
+   - Wertebereiche, Pflichtfelder, Dublettencheck.
+   - Deutliche Fehlermeldungen im UI.
+3. **Erklärbare Empfehlung**
+   - Ergebnis-Card mit Aufschlüsselung:
+     - Preisvorteil
+     - Mehrfahrtkosten
+     - Netto-Ersparnis
 
-### TODOs
-- [x] Geolocation-Flow inkl. Fehlercodes implementieren/überarbeiten
-- [x] Berechnungsservice um explizite Fallback-Strategie erweitern
-- [x] UI-Texte für Standortstatus und Berechnungsqualität ergänzen
-- [x] Unit-Tests für Standort-Fallbacks ergänzen
-- [x] Sprint-1-Konzeptdokument erstellt: `docs/SPRINT1_TECH_CONCEPT.md`
+## 4) Qualität & Technik
 
----
+1. **Testbarkeit erhöhen**
+   - Rechenlogik in separates Modul extrahieren.
+   - Unit-Tests für Grenzfälle (0 km, negative Ersparnis, gleiche Preise).
+2. **TypeScript einführen**
+   - Klarere Domänenmodelle (`Vehicle`, `Station`, `PriceSnapshot`, `Recommendation`).
+3. **Build-Setup**
+   - Vite + ESLint + Prettier + Vitest.
 
-## Sprint 2 – Tankstellen-Erfassung automatisieren (1–2 Wochen)
+## 5) Externe Datenquellen (nach MVP)
 
-### Scope
-- Importweg statt reiner manueller Eingabe
-- Primärziel: Tankstellen aus externer Quelle hinzufügen
-  - Google Places API **oder** alternative Anbieter (OpenStreetMap/Overpass)
-- Such-/Importfluss:
-  - Suche nach Region/Koordinate
-  - Vorschläge anzeigen
-  - Mehrfachauswahl und Import in lokale Daten
+1. **Preisimport-Strategie**
+   - Manuell (bestehender Fallback)
+   - Halbautomatisch (CSV/JSON Import)
+   - Vollautomatisch (API Polling)
+2. **Scheduler + Caching**
+   - Periodisches Aktualisieren, Rate-Limits, Retry-Strategie.
+3. **Observability**
+   - Logging für fehlgeschlagene Preisupdates.
 
-### Deliverables
-- Provider-Adapter-Schnittstelle (austauschbar)
-- Erste integrierte Datenquelle (MVP: 1 Provider)
-- Import-UI inkl. Duplikaterkennung
+## 6) Vorschlag für die nächsten 2 Sprints
 
-### TODOs
-- [ ] Provider-Entscheidung dokumentieren (Kosten, Limits, Datenschutz)
-- [ ] Adapter-Interface `StationSearchProvider` definieren
-- [ ] Importmaske mit Ergebnisliste + „Übernehmen“-Aktion bauen
-- [ ] Duplikatlogik (Name+Adresse+Koordinate) implementieren
-- [ ] E2E-Testfall „Suche -> Import -> Berechnung“ definieren
+### Sprint 1 (stabilisieren)
+- CRUD vervollständigen
+- Validierungen verbessern
+- Rechenlogik modularisieren + Unit-Tests
+- Ergebnisansicht mit transparenter Kostenaufschlüsselung
 
----
-
-## Sprint 3 – Realistische Entfernungen per Routing (1–2 Wochen)
-
-### Scope
-- Luftlinie/Hilfsdistanz ersetzen bzw. optional lassen
-- Fahrdistanz/Fahrzeit über Routing API (z. B. Google Directions, OSRM, Here)
-- Caching und Kostenkontrolle (API-Calls)
-
-### Deliverables
-- Routing-Service mit einheitlicher Schnittstelle
-- Distanzquelle pro Ergebnis transparent anzeigen (Luftlinie vs. Route)
-- API-Fehlerhandling + Fallback-Strategie
-
-### TODOs
-- [ ] `RoutingProvider`-Interface einführen
-- [ ] Routing für „aktueller Standort -> Station“ implementieren
-- [ ] Response-Caching (TTL) ergänzen
-- [ ] Fehlerfälle (Timeout, Limit, kein Route-Result) testen
-- [ ] Ergebnisansicht um „Distanzquelle“ und „Standzeit“ ergänzen
-
----
-
-## Sprint 4 – Wirtschaftlichkeitsmodell präzisieren (1 Woche)
-
-### Scope
-- Fachlogik schärfen, damit Empfehlung in der Praxis plausibel ist
-- Energieart-spezifische Regeln (Benzin/Diesel vs. Strom)
-- Referenzmodell finalisieren
-
-### Deliverables
-- Fachdokument „Berechnungsregeln v2"
-- Versioniertes Regelset für spätere API-/Backend-Nutzung
-
-### TODOs
-- [ ] Formelparameter als konfigurierte Policy auslagern
-- [ ] „Lohnt sich“-Schwelle definieren (z. B. Mindestersparnis)
-- [ ] Sensitivitäts-Tests (Preisänderung, Distanzänderung, Verbrauch) ergänzen
-- [ ] Vergleich „mit Referenz“ vs. „ohne Referenz“ per UX-Test evaluieren
-
----
-
-## Offene Entscheidungen (benötigen Product Input)
-
-1. **Externe Datenquelle Tankstellen**: Google Places vs. OSM/Overpass?
-2. **Routinganbieter**: kostenpflichtig/kommerziell vs. Open-Source?
-3. **Referenzkonzept**: verpflichtend, optional oder vollständig entfernen?
-4. **Datenschutz**: Standort nur lokal oder serverseitig verarbeiten?
-
----
-
-## Definition of Done (für kommende Sprints)
-
-- Berechnung liefert reproduzierbare Ergebnisse aus dokumentierter Distanzquelle.
-- Standortstatus ist für Nutzende klar sichtbar.
-- Tankstellen können ohne händische Vollpflege aus externer Quelle übernommen werden.
-- Alle kritischen Rechenpfade sind mit Unit-/Integrationstests abgedeckt.
+### Sprint 2 (datengetrieben)
+- Datenmodell für mehrere Energieträgerpreise
+- Geodaten + Distanzberechnung über Routing-API
+- Erste API-Anbindung für Kraftstoffpreise (mit Zeitstempel)

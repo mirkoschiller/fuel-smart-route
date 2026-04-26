@@ -9,15 +9,9 @@ Fuel Smart Route ist eine einfache Web-App zur wirtschaftlichen Tankentscheidung
 - Kraftstoffpreise je Tankstelle erfassen (Benzin, Diesel, Strom)
 - Reale Ersparnis berechnen (inkl. zusätzlichem Fahrtaufwand)
 - Ergebnis mit Kostenaufschlüsselung (Preisvorteil, Mehrfahrtkosten, Netto)
-- Distanzquelle + Qualitätslabel im Ergebnis (Geo vs. Fallback)
 - Empfehlung ausgeben: **"lohnt sich"** oder **"lohnt sich nicht"**
 - Fahrzeugprofile und Tankstellen **bearbeiten/löschen** (CRUD-Basis)
 - Energieträger-spezifische Empfehlung (nur passende Preise/Stationen werden verglichen)
-- Optionaler aktueller Standort (Lat/Lng) für automatische Distanzberechnung über Geo-Koordinaten
-- Standort automatisch per Browser-Geolocation ermitteln (mit Statusanzeige)
-- Daten als JSON exportieren/importieren (Backup & Transfer)
-- CZK-Preise mit manuell gepflegtem Wechselkurs (CZK → EUR) berücksichtigen (Live oder Snapshot je Station)
-- Referenz-Strategie wählbar: nächste, günstigste oder manuell
 
 ## Berechnungslogik (MVP)
 
@@ -56,21 +50,3 @@ Eine konkrete Roadmap findest du in [NEXT_STEPS.md](./NEXT_STEPS.md).
 npm test
 ```
 
-
-
-## Re-priorisierte Roadmap
-
-Die Roadmap wurde anhand des aktuellen Nutzerfeedbacks neu priorisiert (Standort, externe Tankstellenquellen, Routing, Berechnungslogik).
-Siehe: [NEXT_STEPS.md](./NEXT_STEPS.md)
-
-
-## Sprint-1-Technikkonzept
-
-Konkrete technische Ausarbeitung für Standort-/Distanzlogik:
-`docs/SPRINT1_TECH_CONCEPT.md`
-
-
-## Sprint-Changelog
-
-Versionierter Überblick über umgesetzte und geplante Sprints:
-`docs/SPRINT_CHANGELOG.md`
