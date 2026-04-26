@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Fuel Smart Route</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="container">
+      <h1>Fuel Smart Route</h1>
+      <p class="intro">
+        Berechne, ob sich eine Tankstelle wirtschaftlich lohnt – inklusive zusätzlichem
+        Fahrtaufwand.
+      </p>
+
+      <section class="card">
+        <h2>0) Aktuellen Standort setzen (optional)</h2>
+        <form id="location-form" class="grid-form">
+          <label>
+            Latitude
+            <input name="locationLat" type="number" step="0.000001" min="-90" max="90" />
+          </label>
+          <label>
+            Longitude
+            <input name="locationLng" type="number" step="0.000001" min="-180" max="180" />
+          </label>
+          <label>
+            Wechselkurs CZK → EUR
+            <input name="exchangeRate" type="number" step="0.0001" min="0.0001" value="0.04" />
+          </label>
+          <button type="submit">Standort speichern</button>
+        </form>
+        <div id="location-feedback" class="feedback" aria-live="polite"></div>
+      </section>
+
+      <section class="card">
+        <h2>1) Fahrzeugprofil anlegen</h2>
+        <form id="vehicle-form" class="grid-form">
+          <label>
+            Name
+            <input name="name" required placeholder="z. B. Golf 7" />
+          </label>
+          <label>
+            Energieträger
+            <select name="energyType" required>
+              <option value="benzin">Benzin</option>
+              <option value="diesel">Diesel</option>
+              <option value="strom">Strom</option>
+            </select>
+          </label>
+          <label>
+            Verbrauch (pro 100 km)
+            <input name="consumption" type="number" min="0" step="0.1" required />
+          </label>
+          <label>
+            Tank-/Akkukapazität
+            <input name="capacity" type="number" min="0" step="0.1" required />
+          </label>
+          <div class="actions-row">
+            <button id="vehicle-submit" type="submit">Fahrzeug speichern</button>
+            <button id="vehicle-cancel" type="button" class="secondary" hidden>
+              Bearbeiten abbrechen
+            </button>
+          </div>
+        </form>
+        <div id="vehicle-feedback" class="feedback" aria-live="polite"></div>
+        <ul id="vehicle-list" class="list"></ul>
+      </section>
+
+      <section class="card">
+        <h2>2) Tankstelle speichern</h2>
+        <form id="station-form" class="grid-form">
+          <label>
+            Name
+            <input name="name" required placeholder="z. B. Oelsnitz Zentrum" />
+          </label>
+          <label>
+            Region
+            <input name="region" required placeholder="Oelsnitz / Umgebung / CZ" />
+          </label>
+          <label>
+            Währung
+            <select name="currency" required>
+              <option value="eur">EUR</option>
+              <option value="czk">CZK</option>
+            </select>
+          </label>
+          <label>
+            Wechselkurs-Modus (für CZK)
+            <select name="exchangeRateMode" required>
+              <option value="snapshot">Snapshot beim Speichern</option>
+              <option value="live">Immer aktueller Kurs</option>
+            </select>
+          </label>
+          <label>
+            Distanz manuell (km)
+            <input name="distanceManual" type="number" min="0" step="0.1" />
+          </label>
+          <label>
+            Stations-Latitude
+            <input name="stationLat" type="number" step="0.000001" min="-90" max="90" />
+          </label>
+          <label>
+            Stations-Longitude
+            <input name="stationLng" type="number" step="0.000001" min="-180" max="180" />
+          </label>
+          <label>
+            Preis Benzin (€/L)
+            <input name="priceBenzin" type="number" min="0" step="0.001" />
+          </label>
+          <label>
+            Preis Diesel (€/L)
+            <input name="priceDiesel" type="number" min="0" step="0.001" />
+          </label>
+          <label>
+            Preis Strom (€/kWh)
+            <input name="priceStrom" type="number" min="0" step="0.001" />
+          </label>
+          <div class="actions-row">
+            <button id="station-submit" type="submit">Tankstelle speichern</button>
+            <button id="station-cancel" type="button" class="secondary" hidden>
+              Bearbeiten abbrechen
+            </button>
+          </div>
+        </form>
+        <div id="station-feedback" class="feedback" aria-live="polite"></div>
+        <ul id="station-list" class="list"></ul>
+      </section>
+
+      <section class="card">
+        <h2>3) Wirtschaftlichkeit berechnen</h2>
+        <form id="calc-form" class="grid-form">
+          <label>
+            Fahrzeug
+            <select id="vehicle-select" required></select>
+          </label>
+          <label>
+            Referenz-Strategie
+            <select id="reference-mode">
+              <option value="nearest">Nächste Tankstelle</option>
+              <option value="cheapest">Günstigste Tankstelle</option>
+              <option value="manual">Manuell auswählen</option>
+            </select>
+          </label>
+          <label>
+            Referenz-Tankstelle
+            <select id="reference-select"></select>
+          </label>
+          <label>
+            Gewünschte Tank-/Lademenge
+            <input id="desired-liters" type="number" min="1" step="0.1" value="30" required />
+          </label>
+          <button type="submit">Empfehlung berechnen</button>
+        </form>
+        <div id="result" class="result"></div>
+      </section>
+
+      <section class="card">
+        <h2>4) Daten sichern / importieren</h2>
+        <div class="grid-form">
+          <button id="export-data" type="button">Daten als JSON exportieren</button>
+          <label>
+            JSON importieren
+            <input id="import-data" type="file" accept="application/json" />
+          </label>
+        </div>
+        <div id="data-feedback" class="feedback" aria-live="polite"></div>
+      </section>
+    </main>
+
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
