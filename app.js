@@ -1,26 +1,17 @@
-import {
-  normalizePriceToEur,
-  rankStations,
-  resolveExchangeRateForStation,
-  resolveStationDistanceKm,
-} from "./calc.js";
+import { rankStations } from "./calc.js";
 
 const STORAGE_KEYS = {
   vehicles: "fuelSmartRoute.vehicles",
   stations: "fuelSmartRoute.stations",
-  settings: "fuelSmartRoute.settings",
 };
 
 const state = {
-  vehicles: normalizeVehicles(load(STORAGE_KEYS.vehicles)),
-  stations: normalizeStations(load(STORAGE_KEYS.stations)),
-  settings: loadSettings(),
+  vehicles: load(STORAGE_KEYS.vehicles),
+  stations: load(STORAGE_KEYS.stations),
   editingVehicleId: null,
   editingStationId: null,
 };
 
-const locationForm = document.querySelector("#location-form");
-const locationFeedback = document.querySelector("#location-feedback");
 const vehicleForm = document.querySelector("#vehicle-form");
 const stationForm = document.querySelector("#station-form");
 const calcForm = document.querySelector("#calc-form");
@@ -28,7 +19,6 @@ const vehicleList = document.querySelector("#vehicle-list");
 const stationList = document.querySelector("#station-list");
 const vehicleSelect = document.querySelector("#vehicle-select");
 const referenceSelect = document.querySelector("#reference-select");
-const referenceMode = document.querySelector("#reference-mode");
 const result = document.querySelector("#result");
 const vehicleSubmit = document.querySelector("#vehicle-submit");
 const stationSubmit = document.querySelector("#station-submit");
@@ -36,115 +26,6 @@ const vehicleCancel = document.querySelector("#vehicle-cancel");
 const stationCancel = document.querySelector("#station-cancel");
 const vehicleFeedback = document.querySelector("#vehicle-feedback");
 const stationFeedback = document.querySelector("#station-feedback");
-const exportDataButton = document.querySelector("#export-data");
-const importDataInput = document.querySelector("#import-data");
-const dataFeedback = document.querySelector("#data-feedback");
-
-locationForm.addEventListener("submit", (event) => {
-  event.preventDefault();
-  const formData = new FormData(locationForm);
-  const lat = parseOptionalNumber(formData.get("locationLat"));
-  const lng = parseOptionalNumber(formData.get("locationLng"));
-  const exchangeRate = Number(formData.get("exchangeRate"));
-
-  if ((lat === null && lng !== null) || (lat !== null && lng === null)) {
-    locationFeedback.textContent = "Bitte Latitude und Longitude gemeinsam setzen oder beide leer lassen.";
-    locationFeedback.className = "feedback bad";
-    return;
-  }
-
-  if (lat !== null && (lat < -90 || lat > 90)) {
-    locationFeedback.textContent = "Latitude muss zwischen -90 und 90 liegen.";
-    locationFeedback.className = "feedback bad";
-    return;
-  }
-
-  if (lng !== null && (lng < -180 || lng > 180)) {
-    locationFeedback.textContent = "Longitude muss zwischen -180 und 180 liegen.";
-    locationFeedback.className = "feedback bad";
-    return;
-  }
-
-  if (!Number.isFinite(exchangeRate) || exchangeRate <= 0) {
-    locationFeedback.textContent = "Wechselkurs muss größer als 0 sein.";
-    locationFeedback.className = "feedback bad";
-    return;
-  }
-
-  state.settings.currentLocation = lat === null ? null : { lat, lng };
-  state.settings.exchangeRateCzkToEur = exchangeRate;
-  persist(STORAGE_KEYS.settings, state.settings);
-  locationFeedback.textContent = "Standort gespeichert.";
-  locationFeedback.className = "feedback good";
-  render();
-});
-
-
-exportDataButton.addEventListener("click", () => {
-  const payload = {
-    exportedAt: new Date().toISOString(),
-    vehicles: state.vehicles,
-    stations: state.stations,
-    settings: state.settings,
-  };
-
-  const blob = new Blob([JSON.stringify(payload, null, 2)], {
-    type: "application/json",
-  });
-
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = `fuel-smart-route-export-${new Date().toISOString().slice(0, 10)}.json`;
-  anchor.click();
-  URL.revokeObjectURL(url);
-
-  dataFeedback.textContent = "Export erfolgreich erstellt.";
-  dataFeedback.className = "feedback good";
-});
-
-importDataInput.addEventListener("change", async (event) => {
-  const target = event.target;
-  if (!(target instanceof HTMLInputElement) || !target.files || !target.files[0]) {
-    return;
-  }
-
-  const file = target.files[0];
-  const text = await file.text();
-
-  try {
-    const parsed = JSON.parse(text);
-    const validation = validateImportPayload(parsed);
-
-    if (validation) {
-      dataFeedback.textContent = validation;
-      dataFeedback.className = "feedback bad";
-      return;
-    }
-
-    state.vehicles = normalizeVehicles(parsed.vehicles);
-    state.stations = normalizeStations(parsed.stations);
-    state.settings = {
-      currentLocation: parsed.settings?.currentLocation ?? null,
-      exchangeRateCzkToEur: Number.isFinite(parsed.settings?.exchangeRateCzkToEur)
-        ? parsed.settings.exchangeRateCzkToEur
-        : 0.04,
-    };
-
-    persist(STORAGE_KEYS.vehicles, state.vehicles);
-    persist(STORAGE_KEYS.stations, state.stations);
-    persist(STORAGE_KEYS.settings, state.settings);
-
-    dataFeedback.textContent = "Import erfolgreich. Daten wurden übernommen.";
-    dataFeedback.className = "feedback good";
-    render();
-  } catch {
-    dataFeedback.textContent = "Import fehlgeschlagen: Ungültiges JSON.";
-    dataFeedback.className = "feedback bad";
-  } finally {
-    importDataInput.value = "";
-  }
-});
 
 vehicleForm.addEventListener("submit", (event) => {
   event.preventDefault();
@@ -201,18 +82,12 @@ stationForm.addEventListener("submit", (event) => {
     id: state.editingStationId || crypto.randomUUID(),
     name: formData.get("name")?.toString().trim(),
     region: formData.get("region")?.toString().trim(),
-    currency: formData.get("currency")?.toString().toLowerCase() || "eur",
-    exchangeRateMode: formData.get("exchangeRateMode")?.toString().toLowerCase() || "snapshot",
-    exchangeRateSnapshot: null,
-    distanceManual: parseOptionalNumber(formData.get("distanceManual")),
-    lat: parseOptionalNumber(formData.get("stationLat")),
-    lng: parseOptionalNumber(formData.get("stationLng")),
+    distance: Number(formData.get("distance")),
     prices: {
       benzin: parseOptionalNumber(formData.get("priceBenzin")),
       diesel: parseOptionalNumber(formData.get("priceDiesel")),
       strom: parseOptionalNumber(formData.get("priceStrom")),
     },
-    priceUpdatedAt: new Date().toISOString(),
   };
 
   const validationError = validateStation(station);
@@ -220,13 +95,6 @@ stationForm.addEventListener("submit", (event) => {
     stationFeedback.textContent = validationError;
     stationFeedback.className = "feedback bad";
     return;
-  }
-
-  if (station.currency === "czk") {
-    station.exchangeRateSnapshot =
-      station.exchangeRateMode === "snapshot" ? state.settings.exchangeRateCzkToEur : null;
-  } else {
-    station.exchangeRateSnapshot = null;
   }
 
   const duplicate = state.stations.find(
@@ -331,31 +199,21 @@ calcForm.addEventListener("submit", (event) => {
 
   const stationsWithEnergyPrice = state.stations
     .map((station) => {
-      const rawPrice = station.prices?.[vehicle.energyType] ?? null;
-      const exchangeRateUsed = resolveExchangeRateForStation(
-        station,
-        state.settings.exchangeRateCzkToEur
-      );
-      const price = normalizePriceToEur(rawPrice, station.currency || "eur", exchangeRateUsed);
-      const distance = resolveStationDistanceKm(station, state.settings.currentLocation);
-      return Number.isFinite(price) && Number.isFinite(distance)
-        ? { ...station, price, rawPrice, exchangeRateUsed }
-        : null;
+      const price = station.prices?.[vehicle.energyType] ?? null;
+      return price && price > 0 ? { ...station, price } : null;
     })
     .filter(Boolean);
 
   if (!stationsWithEnergyPrice.length) {
-    result.innerHTML = `<div class="result-item bad">Keine passenden Preise/Entfernungen für Energieträger <strong>${escapeHtml(
+    result.innerHTML = `<div class="result-item bad">Keine passenden Preise für Energieträger <strong>${escapeHtml(
       vehicle.energyType
     )}</strong> vorhanden.</div>`;
     return;
   }
 
-  const reference = pickReferenceStation({
-    stations: stationsWithEnergyPrice,
-    mode: referenceMode.value,
-    manualId: referenceSelect.value,
-  });
+  const reference =
+    stationsWithEnergyPrice.find((item) => item.id === referenceSelect.value) ||
+    nearestStation(stationsWithEnergyPrice);
 
   const rows = rankStations({
     stations: stationsWithEnergyPrice,
@@ -364,18 +222,13 @@ calcForm.addEventListener("submit", (event) => {
     consumptionPer100: vehicle.consumption,
   });
 
-  const referenceInfo = `<div class="result-item"><strong>Referenz:</strong> ${escapeHtml(reference.name)} (${referenceMode.value})</div>`;
-
-  result.innerHTML =
-    referenceInfo +
-    rows
-      .map(({ station, breakdown }) => {
+  result.innerHTML = rows
+    .map(({ station, breakdown }) => {
       const unit = vehicle.energyType === "strom" ? "€/kWh" : "€/L";
       return `
       <div class="result-item">
         <strong>${escapeHtml(station.name)}</strong> (${escapeHtml(station.region)})<br />
-        Preis (${escapeHtml(vehicle.energyType)}): ${station.rawPrice.toFixed(3)} ${station.currency === "czk" ? "CZK" : "EUR"}${unit === "€/kWh" ? "/kWh" : "/L"} (=${station.price.toFixed(3)} EUR) · Distanz: ${station.distance.toFixed(1)} km<br />
-        ${station.currency === "czk" ? `Kurs: ${station.exchangeRateUsed.toFixed(4)} (${station.exchangeRateMode === "snapshot" ? "Snapshot" : "Live"})<br />` : ""}
+        Preis (${escapeHtml(vehicle.energyType)}): ${station.price.toFixed(3)} ${unit} · Distanz: ${station.distance.toFixed(1)} km<br />
         Preisvorteil: ${breakdown.priceAdvantage.toFixed(2)} € · Mehrfahrtkosten: ${breakdown.extraTripCost.toFixed(2)} €<br />
         Reale Ersparnis ggü. Referenz: <strong>${breakdown.netSavings.toFixed(2)} €</strong><br />
         Empfehlung: <span class="${breakdown.worthwhile ? "good" : "bad"}">${
@@ -385,67 +238,6 @@ calcForm.addEventListener("submit", (event) => {
     })
     .join("");
 });
-
-
-function normalizeVehicles(vehicles) {
-  if (!Array.isArray(vehicles)) {
-    return [];
-  }
-
-  return vehicles
-    .filter((vehicle) => vehicle && typeof vehicle === "object")
-    .map((vehicle) => ({
-      id: vehicle.id || crypto.randomUUID(),
-      name: String(vehicle.name ?? "").trim(),
-      energyType: String(vehicle.energyType ?? "").toLowerCase(),
-      consumption: Number(vehicle.consumption),
-      capacity: Number(vehicle.capacity),
-    }))
-    .filter(
-      (vehicle) =>
-        vehicle.name &&
-        ["benzin", "diesel", "strom"].includes(vehicle.energyType) &&
-        Number.isFinite(vehicle.consumption) &&
-        vehicle.consumption > 0 &&
-        Number.isFinite(vehicle.capacity) &&
-        vehicle.capacity > 0
-    );
-}
-
-function normalizeStations(stations) {
-  if (!Array.isArray(stations)) {
-    return [];
-  }
-
-  return stations
-    .filter((station) => station && typeof station === "object")
-    .map((station) => ({
-      id: station.id || crypto.randomUUID(),
-      name: String(station.name ?? "").trim(),
-      region: String(station.region ?? "").trim(),
-      currency: ["eur", "czk"].includes(station.currency) ? station.currency : "eur",
-      exchangeRateMode: ["snapshot", "live"].includes(station.exchangeRateMode)
-        ? station.exchangeRateMode
-        : "snapshot",
-      exchangeRateSnapshot: Number.isFinite(station.exchangeRateSnapshot)
-        ? station.exchangeRateSnapshot
-        : null,
-      distanceManual: Number.isFinite(station.distanceManual)
-        ? station.distanceManual
-        : Number.isFinite(station.distance)
-          ? station.distance
-          : null,
-      lat: Number.isFinite(station.lat) ? station.lat : null,
-      lng: Number.isFinite(station.lng) ? station.lng : null,
-      prices: {
-        benzin: Number.isFinite(station.prices?.benzin) ? station.prices.benzin : null,
-        diesel: Number.isFinite(station.prices?.diesel) ? station.prices.diesel : null,
-        strom: Number.isFinite(station.prices?.strom) ? station.prices.strom : null,
-      },
-      priceUpdatedAt: station.priceUpdatedAt || null,
-    }))
-    .filter((station) => station.name && station.region);
-}
 
 function parseOptionalNumber(value) {
   if (value === null || value === "") {
@@ -480,30 +272,8 @@ function validateStation(station) {
   if (!station.region) {
     return "Bitte Region eingeben.";
   }
-  if (!["eur", "czk"].includes(station.currency)) {
-    return "Währung muss EUR oder CZK sein.";
-  }
-  if (!["snapshot", "live"].includes(station.exchangeRateMode)) {
-    return "Wechselkurs-Modus muss snapshot oder live sein.";
-  }
-
-  const hasManualDistance = Number.isFinite(station.distanceManual) && station.distanceManual >= 0;
-  const hasCoordinates = Number.isFinite(station.lat) && Number.isFinite(station.lng);
-
-  if (!hasManualDistance && !hasCoordinates) {
-    return "Bitte Distanz (manuell) oder Koordinaten (Lat/Lng) erfassen.";
-  }
-
-  if ((station.lat === null) !== (station.lng === null)) {
-    return "Bitte Stations-Latitude und -Longitude gemeinsam setzen.";
-  }
-
-  if (station.lat !== null && (station.lat < -90 || station.lat > 90)) {
-    return "Stations-Latitude muss zwischen -90 und 90 liegen.";
-  }
-
-  if (station.lng !== null && (station.lng < -180 || station.lng > 180)) {
-    return "Stations-Longitude muss zwischen -180 und 180 liegen.";
+  if (!Number.isFinite(station.distance) || station.distance < 0) {
+    return "Distanz muss 0 oder größer sein.";
   }
 
   const prices = Object.values(station.prices);
@@ -515,23 +285,6 @@ function validateStation(station) {
 
   if (prices.some((value) => value !== null && (!Number.isFinite(value) || value <= 0))) {
     return "Preise müssen größer als 0 sein.";
-  }
-
-  return null;
-}
-
-
-function validateImportPayload(payload) {
-  if (!payload || typeof payload !== "object") {
-    return "Import-Datei hat kein gültiges Objektformat.";
-  }
-
-  if (!Array.isArray(payload.vehicles) || !Array.isArray(payload.stations)) {
-    return "Import-Datei benötigt Arrays für vehicles und stations.";
-  }
-
-  if (payload.vehicles.length === 0 && payload.stations.length === 0) {
-    return "Import-Datei enthält keine Fahrzeug- oder Tankstellen-Daten.";
   }
 
   return null;
@@ -560,11 +313,7 @@ function startEditStation(id) {
 
   stationForm.elements.namedItem("name").value = station.name;
   stationForm.elements.namedItem("region").value = station.region;
-  stationForm.elements.namedItem("currency").value = station.currency ?? "eur";
-  stationForm.elements.namedItem("exchangeRateMode").value = station.exchangeRateMode ?? "snapshot";
-  stationForm.elements.namedItem("distanceManual").value = station.distanceManual ?? "";
-  stationForm.elements.namedItem("stationLat").value = station.lat ?? "";
-  stationForm.elements.namedItem("stationLng").value = station.lng ?? "";
+  stationForm.elements.namedItem("distance").value = station.distance;
   stationForm.elements.namedItem("priceBenzin").value = station.prices?.benzin ?? "";
   stationForm.elements.namedItem("priceDiesel").value = station.prices?.diesel ?? "";
   stationForm.elements.namedItem("priceStrom").value = station.prices?.strom ?? "";
@@ -585,23 +334,6 @@ function resetStationForm() {
   state.editingStationId = null;
   stationSubmit.textContent = "Tankstelle speichern";
   stationCancel.hidden = true;
-}
-
-
-function pickReferenceStation({ stations, mode, manualId }) {
-  if (!stations.length) {
-    return null;
-  }
-
-  if (mode === "manual") {
-    return stations.find((item) => item.id === manualId) || nearestStation(stations);
-  }
-
-  if (mode === "cheapest") {
-    return [...stations].sort((a, b) => a.price - b.price || a.distance - b.distance)[0];
-  }
-
-  return nearestStation(stations);
 }
 
 function nearestStation(stations) {
@@ -625,27 +357,12 @@ function load(key) {
   }
 }
 
-function loadSettings() {
-  const settings = load(STORAGE_KEYS.settings);
-  const source = settings && typeof settings === "object" ? settings : {};
-
-  return {
-    currentLocation:
-      Number.isFinite(source.currentLocation?.lat) && Number.isFinite(source.currentLocation?.lng)
-        ? { lat: source.currentLocation.lat, lng: source.currentLocation.lng }
-        : null,
-    exchangeRateCzkToEur: Number.isFinite(source.exchangeRateCzkToEur)
-      ? source.exchangeRateCzkToEur
-      : 0.04,
-  };
-}
-
 function persist(key, value) {
   localStorage.setItem(key, JSON.stringify(value));
 }
 
 function escapeHtml(value) {
-  return String(value ?? "")
+  return value
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
@@ -653,7 +370,7 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
-function formatStationPrices(prices, currency, exchangeRateMode, exchangeRateSnapshot) {
+function formatStationPrices(prices) {
   const entries = [
     ["Benzin", prices?.benzin],
     ["Diesel", prices?.diesel],
@@ -662,21 +379,10 @@ function formatStationPrices(prices, currency, exchangeRateMode, exchangeRateSna
     .filter(([, value]) => Number.isFinite(value) && value > 0)
     .map(([label, value]) => `${label}: ${value.toFixed(3)}`);
 
-  const suffix = currency === "czk" ? "CZK" : "EUR";
-  const rateInfo =
-    currency === "czk"
-      ? exchangeRateMode === "snapshot"
-        ? `, Kurs-Snapshot: ${Number.isFinite(exchangeRateSnapshot) ? exchangeRateSnapshot.toFixed(4) : "-"}`
-        : ", Kurs: live"
-      : "";
-  return entries.length ? `${entries.join(" · ")} (${suffix}${rateInfo})` : "Keine Preise";
+  return entries.length ? entries.join(" · ") : "Keine Preise";
 }
 
 function render() {
-  locationForm.elements.namedItem("locationLat").value = state.settings.currentLocation?.lat ?? "";
-  locationForm.elements.namedItem("locationLng").value = state.settings.currentLocation?.lng ?? "";
-  locationForm.elements.namedItem("exchangeRate").value = state.settings.exchangeRateCzkToEur;
-
   vehicleList.innerHTML = state.vehicles
     .map(
       (vehicle) =>
@@ -693,25 +399,18 @@ function render() {
     .join("");
 
   stationList.innerHTML = state.stations
-    .map((station) => {
-      const distance = resolveStationDistanceKm(station, state.settings.currentLocation);
-      const distanceLabel = Number.isFinite(distance) ? `${distance.toFixed(1)} km` : "keine Distanz";
-
-      return `<li class="list-row">
-          <span>${escapeHtml(station.name)} (${escapeHtml(station.region)}) · ${distanceLabel} · ${escapeHtml(
-        formatStationPrices(
-          station.prices,
-          station.currency || "eur",
-          station.exchangeRateMode || "snapshot",
-          station.exchangeRateSnapshot
-        )
-      )}</span>
+    .map(
+      (station) =>
+        `<li class="list-row">
+          <span>${escapeHtml(station.name)} (${escapeHtml(station.region)}) · ${station.distance.toFixed(
+          1
+        )} km · ${escapeHtml(formatStationPrices(station.prices))}</span>
           <span class="row-actions">
             <button type="button" class="mini secondary" data-action="edit" data-id="${station.id}">Bearbeiten</button>
             <button type="button" class="mini danger" data-action="delete" data-id="${station.id}">Löschen</button>
           </span>
-        </li>`;
-    })
+        </li>`
+    )
     .join("");
 
   const vehicleOptions = state.vehicles
@@ -720,31 +419,21 @@ function render() {
 
   vehicleSelect.innerHTML = vehicleOptions || "<option value=''>Keine Fahrzeuge</option>";
 
-  const selectedVehicle =
-    state.vehicles.find((item) => item.id === vehicleSelect.value) || state.vehicles[0];
+  const selectedVehicle = state.vehicles.find((item) => item.id === vehicleSelect.value) || state.vehicles[0];
   const energyType = selectedVehicle?.energyType;
 
   const eligibleStations = state.stations.filter((station) => {
-    const rawPrice = station.prices?.[energyType];
-    const exchangeRateUsed = resolveExchangeRateForStation(
-      station,
-      state.settings.exchangeRateCzkToEur
-    );
-    const price = normalizePriceToEur(rawPrice, station.currency || "eur", exchangeRateUsed);
-    const distance = resolveStationDistanceKm(station, state.settings.currentLocation);
-    return Number.isFinite(price) && Number.isFinite(distance);
+    const price = station.prices?.[energyType];
+    return Number.isFinite(price) && price > 0;
   });
 
   const referenceOptions = eligibleStations
     .map((station) => `<option value="${station.id}">${escapeHtml(station.name)}</option>`)
     .join("");
 
-  referenceSelect.innerHTML =
-    referenceOptions || "<option value=''>Keine passenden Tankstellen</option>";
-  referenceSelect.disabled = referenceMode.value !== "manual";
+  referenceSelect.innerHTML = referenceOptions || "<option value=''>Keine passenden Tankstellen</option>";
 }
 
 vehicleSelect.addEventListener("change", render);
-referenceMode.addEventListener("change", render);
 
 render();

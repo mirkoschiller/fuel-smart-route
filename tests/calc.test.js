@@ -1,13 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {
-  calculateRealSavingsBreakdown,
-  haversineKm,
-  rankStations,
-  resolveStationDistanceKm,
-  normalizePriceToEur,
-  resolveExchangeRateForStation,
-} from "../calc.js";
+import { calculateRealSavingsBreakdown, rankStations } from "../calc.js";
 
 test("calculateRealSavingsBreakdown computes savings and marks worthwhile", () => {
   const breakdown = calculateRealSavingsBreakdown({
@@ -37,40 +30,4 @@ test("rankStations sorts descending by net savings", () => {
 
   assert.equal(ranked[0].station.id, "a");
   assert.equal(ranked.at(-1).station.id, "b");
-});
-
-test("haversineKm returns near-zero for same location", () => {
-  const distance = haversineKm({ lat: 50.0, lng: 12.0 }, { lat: 50.0, lng: 12.0 });
-  assert.ok(distance < 0.001);
-});
-
-test("resolveStationDistanceKm prefers geo distance when current location is available", () => {
-  const station = { lat: 50.41, lng: 12.17, distanceManual: 99 };
-  const current = { lat: 50.40, lng: 12.15 };
-
-  const distance = resolveStationDistanceKm(station, current);
-
-  assert.ok(distance > 0);
-  assert.ok(distance < 10);
-});
-
-
-test("normalizePriceToEur converts CZK prices and keeps EUR prices", () => {
-  assert.equal(normalizePriceToEur(40, "czk", 0.04).toFixed(2), "1.60");
-  assert.equal(normalizePriceToEur(1.73, "eur", 0.04).toFixed(2), "1.73");
-});
-
-
-test("resolveExchangeRateForStation respects snapshot mode for CZK", () => {
-  const snapshotRate = resolveExchangeRateForStation(
-    { currency: "czk", exchangeRateMode: "snapshot", exchangeRateSnapshot: 0.0391 },
-    0.0412
-  );
-  const liveRate = resolveExchangeRateForStation(
-    { currency: "czk", exchangeRateMode: "live", exchangeRateSnapshot: 0.0391 },
-    0.0412
-  );
-
-  assert.equal(snapshotRate, 0.0391);
-  assert.equal(liveRate, 0.0412);
 });

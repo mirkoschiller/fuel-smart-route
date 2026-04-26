@@ -12,10 +12,6 @@ Fuel Smart Route ist eine einfache Web-App zur wirtschaftlichen Tankentscheidung
 - Empfehlung ausgeben: **"lohnt sich"** oder **"lohnt sich nicht"**
 - Fahrzeugprofile und Tankstellen **bearbeiten/löschen** (CRUD-Basis)
 - Energieträger-spezifische Empfehlung (nur passende Preise/Stationen werden verglichen)
-- Optionaler aktueller Standort (Lat/Lng) für automatische Distanzberechnung über Geo-Koordinaten
-- Daten als JSON exportieren/importieren (Backup & Transfer)
-- CZK-Preise mit manuell gepflegtem Wechselkurs (CZK → EUR) berücksichtigen (Live oder Snapshot je Station)
-- Referenz-Strategie wählbar: nächste, günstigste oder manuell
 
 ## Berechnungslogik (MVP)
 
