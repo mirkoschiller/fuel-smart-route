@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Fuel Smart Route</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="container">
+      <h1>Fuel Smart Route</h1>
+      <p class="intro">
+        Berechne, ob sich eine Tankstelle wirtschaftlich lohnt – inklusive zusätzlichem
+        Fahrtaufwand.
+      </p>
+
+      <section class="card">
+        <h2>1) Fahrzeugprofil anlegen</h2>
+        <form id="vehicle-form" class="grid-form">
+          <label>
+            Name
+            <input name="name" required placeholder="z. B. Golf 7" />
+          </label>
+          <label>
+            Energieträger
+            <select name="energyType" required>
+              <option value="benzin">Benzin</option>
+              <option value="diesel">Diesel</option>
+              <option value="strom">Strom</option>
+            </select>
+          </label>
+          <label>
+            Verbrauch (pro 100 km)
+            <input name="consumption" type="number" min="0" step="0.1" required />
+          </label>
+          <label>
+            Tank-/Akkukapazität
+            <input name="capacity" type="number" min="0" step="0.1" required />
+          </label>
+          <div class="actions-row">
+            <button id="vehicle-submit" type="submit">Fahrzeug speichern</button>
+            <button id="vehicle-cancel" type="button" class="secondary" hidden>
+              Bearbeiten abbrechen
+            </button>
+          </div>
+        </form>
+        <div id="vehicle-feedback" class="feedback" aria-live="polite"></div>
+        <ul id="vehicle-list" class="list"></ul>
+      </section>
+
+      <section class="card">
+        <h2>2) Tankstelle speichern</h2>
+        <form id="station-form" class="grid-form">
+          <label>
+            Name
+            <input name="name" required placeholder="z. B. Oelsnitz Zentrum" />
+          </label>
+          <label>
+            Region
+            <input name="region" required placeholder="Oelsnitz / Umgebung / CZ" />
+          </label>
+          <label>
+            Distanz vom Standort (km)
+            <input name="distance" type="number" min="0" step="0.1" required />
+          </label>
+          <label>
+            Preis Benzin (€/L)
+            <input name="priceBenzin" type="number" min="0" step="0.001" />
+          </label>
+          <label>
+            Preis Diesel (€/L)
+            <input name="priceDiesel" type="number" min="0" step="0.001" />
+          </label>
+          <label>
+            Preis Strom (€/kWh)
+            <input name="priceStrom" type="number" min="0" step="0.001" />
+          </label>
+          <div class="actions-row">
+            <button id="station-submit" type="submit">Tankstelle speichern</button>
+            <button id="station-cancel" type="button" class="secondary" hidden>
+              Bearbeiten abbrechen
+            </button>
+          </div>
+        </form>
+        <div id="station-feedback" class="feedback" aria-live="polite"></div>
+        <ul id="station-list" class="list"></ul>
+      </section>
+
+      <section class="card">
+        <h2>3) Wirtschaftlichkeit berechnen</h2>
+        <form id="calc-form" class="grid-form">
+          <label>
+            Fahrzeug
+            <select id="vehicle-select" required></select>
+          </label>
+          <label>
+            Referenz-Tankstelle
+            <select id="reference-select"></select>
+          </label>
+          <label>
+            Gewünschte Tank-/Lademenge
+            <input id="desired-liters" type="number" min="1" step="0.1" value="30" required />
+          </label>
+          <button type="submit">Empfehlung berechnen</button>
+        </form>
+        <div id="result" class="result"></div>
+      </section>
+    </main>
+
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
